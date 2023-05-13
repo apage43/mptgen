@@ -7,6 +7,7 @@
 #define MINMPT_OK 0
 #define MINMPT_INVALID 1
 #define MINMPT_FAILURE 2
+#define MINMPT_CTX_LIMIT 3
 
 #ifdef __cplusplus
 extern "C" {

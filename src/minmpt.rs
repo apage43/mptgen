@@ -9,6 +9,8 @@ mod binding {
 
 #[derive(Error, Debug)]
 pub enum MinMPTError {
+    #[error("Exceeded model context size")]
+    ContextLimit,
     #[error("Invalid input")]
     InvalidInput,
     #[error("Internal failure")]
@@ -19,12 +21,11 @@ pub enum MinMPTError {
 
 impl MinMPTError {
     fn from_code(code: i32) -> Self {
-        if code == binding::MINMPT_FAILURE as i32 {
-            Self::Failure 
-        } else if code == binding::MINMPT_INVALID as i32 {
-            Self::InvalidInput
-        } else {
-            Self::Unknown
+        match code as u32 {
+            binding::MINMPT_FAILURE => Self::Failure,
+            binding::MINMPT_INVALID => Self::InvalidInput,
+            binding::MINMPT_CTX_LIMIT => Self::ContextLimit,
+            _ => Self::Unknown
         }
     }
 }

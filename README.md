@@ -15,7 +15,7 @@ cd minmpt.cpp && mkdir -p models && ./build/bin/quantize /mnt/e/big_model/ggml-m
 ```
 
 ```bash
-LD_LIBRARY_PATH="./minmpt.cpp/build" cargo run -- --temperature 0.7
+LD_LIBRARY_PATH="./minmpt.cpp/build" cargo run --bin chat -- --temperature 0.7
     Finished dev [unoptimized + debuginfo] target(s) in 0.13s
      Running `target/debug/mptgen --temperature 0.7`
 mpt_model_load: loading model from 'minmpt.cpp/models/ggml-mpt-7b-chat-q5_1.bin' - please wait ...

@@ -3,8 +3,8 @@ use rand::rngs::ThreadRng;
 use std::{fmt::Write, io::Write as IoWrite, path::PathBuf};
 use structopt::StructOpt;
 use tokenizers::tokenizer::Tokenizer;
-mod minmpt;
-mod sampling;
+use mptgen::minmpt;
+use mptgen::sampling;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "mptgen")]

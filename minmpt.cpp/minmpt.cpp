@@ -80,6 +80,9 @@ minmpt_error minmpt_eval_logits(minmpt_handle handle,
                                 float *logits)
 {
     auto modelp = from_handle(handle);
+    if (modelp->n_past + n_tokens > modelp->model.hparams.n_ctx) {
+        return MINMPT_CTX_LIMIT;
+    }
     if (modelp->mem_per_token == 0)
     {
         std::vector<float> dummy_logits;
