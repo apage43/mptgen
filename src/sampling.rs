@@ -53,10 +53,10 @@ pub struct BasicSampler {
 impl<R: Rng> Sampler<R> for BasicSampler {
     fn sample(&mut self, raw_logits: &[f32], rng: &mut R) -> usize {
         if self.temperature == Some(0.) {
-            return greedy(raw_logits)
+            return greedy(raw_logits);
         }
         let probs = if let Some(temp) = self.temperature {
-            let mut templogits: Vec<f32>  =raw_logits.iter().map(|l| *l / temp).collect();
+            let mut templogits: Vec<f32> = raw_logits.iter().map(|l| *l / temp).collect();
             softmax_inplace(&mut templogits);
             templogits
         } else {
@@ -100,7 +100,14 @@ impl Mirostat {
         }
     }
 }
-impl <R:Rng> Sampler<R> for Mirostat {
+
+impl Default for Mirostat {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<R: Rng> Sampler<R> for Mirostat {
     fn sample(&mut self, raw_logits: &[f32], rng: &mut R) -> usize {
         let mut cands = sorted_softmax(raw_logits);
         let n_cand = cands.len() as f32;

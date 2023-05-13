@@ -25,7 +25,7 @@ impl MinMPTError {
             binding::MINMPT_FAILURE => Self::Failure,
             binding::MINMPT_INVALID => Self::InvalidInput,
             binding::MINMPT_CTX_LIMIT => Self::ContextLimit,
-            _ => Self::Unknown
+            _ => Self::Unknown,
         }
     }
 }
@@ -50,24 +50,16 @@ impl MinMPT {
     }
 
     pub fn n_vocab(&self) -> usize {
-        unsafe {
-            binding::minmpt_n_vocab(self.handle)
-        }
+        unsafe { binding::minmpt_n_vocab(self.handle) }
     }
     pub fn n_past(&self) -> usize {
-        unsafe {
-            binding::minmpt_n_past(self.handle)
-        }
+        unsafe { binding::minmpt_n_past(self.handle) }
     }
     pub fn rewind(&self, n: usize) {
-        unsafe {
-            binding::minmpt_rewind(self.handle, n)
-        }
+        unsafe { binding::minmpt_rewind(self.handle, n) }
     }
     pub fn n_ctx(&self) -> usize {
-        unsafe {
-            binding::minmpt_n_ctx(self.handle)
-        }
+        unsafe { binding::minmpt_n_ctx(self.handle) }
     }
     pub fn reset_ctx(&mut self) {
         unsafe {
@@ -77,7 +69,12 @@ impl MinMPT {
     pub fn eval(&mut self, ids: &[u32], logits_out: &mut Vec<f32>) -> Result<(), MinMPTError> {
         logits_out.resize(self.n_vocab(), 0.0);
         let err = unsafe {
-            binding::minmpt_eval_logits(self.handle, ids.as_ptr(), ids.len(), logits_out.as_mut_ptr())
+            binding::minmpt_eval_logits(
+                self.handle,
+                ids.as_ptr(),
+                ids.len(),
+                logits_out.as_mut_ptr(),
+            )
         };
         if err == binding::MINMPT_OK as i32 {
             Ok(())
