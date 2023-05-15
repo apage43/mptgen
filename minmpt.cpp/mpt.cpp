@@ -311,7 +311,7 @@ bool mpt_eval(
     // some known good values for given model sizes
     if (mem_per_token > 0)
     {
-        const size_t buf_size_new = 1.1 * (mem_per_token * (N * 1.3 + n_past)); // add 10% to account for ggml object overhead
+        const size_t buf_size_new = 1.1 * (mem_per_token * 1.3 * N) + (mem_per_token * n_past); // add 10% to account for ggml object overhead
         if (buf_size_new > buf_size)
         {
             buf_size = buf_size_new;

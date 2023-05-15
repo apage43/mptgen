@@ -18,7 +18,7 @@ arg_enum! {
 #[derive(Debug, StructOpt)]
 #[structopt(name = "mptgen")]
 struct Opt {
-    #[structopt(parse(from_os_str))]
+    #[structopt(short, long, parse(from_os_str))]
     model: Option<PathBuf>,
     #[structopt(short, long)]
     temperature: Option<f32>,
@@ -64,7 +64,7 @@ fn main() -> Result<()> {
     if let Some(n_ctx) = opt.n_ctx {
         loadopts = loadopts.override_n_ctx(n_ctx);
     }
-    let mut mptmodel = minmpt::MinMPT::load_model(&modelpathstr, loadopts)?;
+    let mut mptmodel = minmpt::MinMPT::load_model(&modelpathstr, Some(loadopts))?;
     let mut logits = Vec::new();
     let sysprompt = match mode {
         ChatMode::ChatML => "<|im_start|>system\nyou are a helpful assistant<|im_end|>", 

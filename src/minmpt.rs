@@ -32,7 +32,7 @@ impl MinMPTError {
 
 #[derive(Default, Debug)]
 pub struct MinMPTOptions {
-    n_ctx_override: Option<usize>
+    n_ctx_override: Option<usize>,
 }
 
 impl MinMPTOptions {
@@ -50,11 +50,20 @@ pub struct MinMPT {
 
 #[allow(dead_code)]
 impl MinMPT {
-    pub fn load_model(path: &str, load_options: MinMPTOptions) -> Result<MinMPT, MinMPTError> {
+    pub fn load_model(
+        path: &str,
+        load_options: Option<MinMPTOptions>,
+    ) -> Result<MinMPT, MinMPTError> {
         let mut me = MinMPT { handle: null_mut() };
+        let load_options = load_options.unwrap_or_default();
         let href: *mut binding::minmpt_handle = &mut me.handle;
         let err = unsafe {
-            binding::minmpt_load(href, path.as_bytes().as_ptr().cast(), path.as_bytes().len(), load_options.n_ctx_override.unwrap_or(0))
+            binding::minmpt_load(
+                href,
+                path.as_bytes().as_ptr().cast(),
+                path.as_bytes().len(),
+                load_options.n_ctx_override.unwrap_or(0),
+            )
         };
         if err == binding::MINMPT_OK as i32 {
             Ok(me)
