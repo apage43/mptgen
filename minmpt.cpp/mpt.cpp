@@ -92,12 +92,12 @@ bool mpt_model_load(const std::string &fname, mpt_model &model, size_t n_ctx_ove
         const int n_vocab = hparams.n_vocab;
         const int expand = hparams.expand;
 
-        ctx_size += n_embd * ggml_type_sizef(GGML_TYPE_F32); // ln_f_w
+        ctx_size += n_embd * ggml_type_size(GGML_TYPE_F32); // ln_f_w
 
-        ctx_size += n_embd * n_vocab * ggml_type_sizef(GGML_TYPE_F32); // wte
+        ctx_size += n_embd * n_vocab * ggml_type_size(GGML_TYPE_F32); // wte
 
-        ctx_size += n_layer * (n_embd * ggml_type_sizef(GGML_TYPE_F32)); // norm_1_w
-        ctx_size += n_layer * (n_embd * ggml_type_sizef(GGML_TYPE_F32)); // norm_2_w
+        ctx_size += n_layer * (n_embd * ggml_type_size(GGML_TYPE_F32)); // norm_1_w
+        ctx_size += n_layer * (n_embd * ggml_type_size(GGML_TYPE_F32)); // norm_2_w
 
         ctx_size += n_layer * (3 * n_embd * n_embd * ggml_type_sizef(wtype)); // attn_Wqkv_w
         ctx_size += n_layer * (n_embd * n_embd * ggml_type_sizef(wtype));     // attn_out_proj_w
@@ -105,8 +105,8 @@ bool mpt_model_load(const std::string &fname, mpt_model &model, size_t n_ctx_ove
         ctx_size += n_layer * (expand * n_embd * n_embd * ggml_type_sizef(wtype)); // ffn_up_proj_w
         ctx_size += n_layer * (expand * n_embd * n_embd * ggml_type_sizef(wtype)); // ffn_down_proj_w
 
-        ctx_size += n_ctx * n_layer * n_embd * ggml_type_sizef(GGML_TYPE_F16); // memory_k
-        ctx_size += n_ctx * n_layer * n_embd * ggml_type_sizef(GGML_TYPE_F16); // memory_v
+        ctx_size += (size_t) n_ctx * n_layer * n_embd * ggml_type_size(GGML_TYPE_F16); // memory_k
+        ctx_size += (size_t) n_ctx * n_layer * n_embd * ggml_type_size(GGML_TYPE_F16); // memory_v
 
         // TODO probably less now?
         ctx_size += (5 + 10 * n_layer) * 256; // object overhead
@@ -181,7 +181,7 @@ bool mpt_model_load(const std::string &fname, mpt_model &model, size_t n_ctx_ove
         const int n_ctx = hparams.n_ctx;
 
         const int n_mem = n_layer * n_ctx;
-        const int n_elements = n_embd * n_mem;
+        const size_t n_elements = (size_t) n_embd * n_mem;
 
         model.memory_k = ggml_new_tensor_1d(ctx, GGML_TYPE_F16, n_elements);
         model.memory_v = ggml_new_tensor_1d(ctx, GGML_TYPE_F16, n_elements);
