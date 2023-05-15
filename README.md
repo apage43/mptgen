@@ -4,7 +4,7 @@ example of binding a **model-only** [ggml](https://github.com/ggerganov/ggml) im
 
 Supports "chat" and "instruct" models with the appropriate [ChatML](https://github.com/openai/openai-python/blob/main/chatml.md) or Alpaca-style prompting formats, autodetected from model file name.
 
-does not properly handle attempting to go past max_seq_len (2048) yet - this requires either rotating old values out of the kv cache to discard them or expanding it (which should actually work somewhat thanks to MPT-7B's use of ALiBi)
+max_seq_len is overridable with the `--n-ctx` flag for the `chat` example, it does not attempt to handle continuing generation past max_seq_len yet
 
 ```bash
 # build minmpt
