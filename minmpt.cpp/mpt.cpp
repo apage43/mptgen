@@ -311,7 +311,7 @@ bool mpt_eval(
     // some known good values for given model sizes
     if (mem_per_token > 0)
     {
-        const size_t buf_size_new = 1.1 * (mem_per_token * (N + n_past)); // add 10% to account for ggml object overhead
+        const size_t buf_size_new = 1.1 * (mem_per_token * (N * 1.3 + n_past)); // add 10% to account for ggml object overhead
         if (buf_size_new > buf_size)
         {
             buf_size = buf_size_new;
@@ -351,7 +351,9 @@ bool mpt_eval(
                                model.layers[il].attn_Wqkv_w,
                                cur);
 
-            // TODO: clip_qkv
+            if (model.hparams.clip_qkv != 0.0f) {
+                cur = ggml_clamp(ctx0, cur, -model.hparams.clip_qkv, model.hparams.clip_qkv);
+            }
             struct ggml_tensor *Qcur = ggml_cont(ctx0, ggml_view_2d(ctx0, cur, n_embd, N, cur->nb[1], 0 * ggml_element_size(cur) * n_embd));
             struct ggml_tensor *Kcur = ggml_cont(ctx0, ggml_view_2d(ctx0, cur, n_embd, N, cur->nb[1], 1 * ggml_element_size(cur) * n_embd));
             struct ggml_tensor *Vcur = ggml_cont(ctx0, ggml_view_2d(ctx0, cur, n_embd, N, cur->nb[1], 2 * ggml_element_size(cur) * n_embd));
@@ -391,7 +393,7 @@ bool mpt_eval(
                            ggml_new_f32(ctx0, 1.0f / sqrt(float(n_embd) / n_head)));
 
             // Alibi
-            struct ggml_tensor *KQ_scaled_biased = ggml_alibi(ctx0, ggml_cont(ctx0, KQ_scaled), n_past, n_head);
+            struct ggml_tensor *KQ_scaled_biased = ggml_alibi(ctx0, ggml_cont(ctx0, KQ_scaled), n_past, n_head, model.hparams.alibi_bias_max);
             ggml_set_name(KQ_scaled_biased, "alibi");
 
             // KQ_masked = mask_past(KQ_scaled)
