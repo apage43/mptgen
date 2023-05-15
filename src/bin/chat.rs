@@ -22,6 +22,8 @@ struct Opt {
     model: Option<PathBuf>,
     #[structopt(short, long)]
     temperature: Option<f32>,
+    #[structopt(short, long)]
+    n_ctx: Option<usize>,
     #[structopt(long)]
     mirostat: bool,
     #[structopt(short, long, possible_values = &ChatMode::variants(), case_insensitive = true)]
@@ -58,7 +60,11 @@ fn main() -> Result<()> {
     if modelpathstr.contains("chat") && mode != ChatMode::ChatML {
         eprintln!("Warning: using ChatML format with non-chat model?");
     }
-    let mut mptmodel = minmpt::MinMPT::load_model(&modelpathstr)?;
+    let mut loadopts = minmpt::MinMPTOptions::default();
+    if let Some(n_ctx) = opt.n_ctx {
+        loadopts = loadopts.override_n_ctx(n_ctx);
+    }
+    let mut mptmodel = minmpt::MinMPT::load_model(&modelpathstr, loadopts)?;
     let mut logits = Vec::new();
     let sysprompt = match mode {
         ChatMode::ChatML => "<|im_start|>system\nyou are a helpful assistant<|im_end|>", 

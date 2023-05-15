@@ -18,13 +18,13 @@ static minmpt_session *from_handle(minmpt_handle h)
     return reinterpret_cast<minmpt_session *>(h);
 }
 
-minmpt_error minmpt_load(minmpt_handle *handle, const char *filename, size_t fnlen)
+minmpt_error minmpt_load(minmpt_handle *handle, const char *filename, size_t fnlen, size_t n_ctx_override)
 {
     auto modelp = new minmpt_session;
     std::string fn(filename, fnlen);
     try
     {
-        if (mpt_model_load(fn, modelp->model))
+        if (mpt_model_load(fn, modelp->model, n_ctx_override))
         {
             *handle = reinterpret_cast<minmpt_handle>(modelp);
             return MINMPT_OK;

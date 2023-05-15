@@ -19,7 +19,7 @@ enum minmpt_format_version
 };
 
 // load the model's weights from a file
-bool mpt_model_load(const std::string &fname, mpt_model &model)
+bool mpt_model_load(const std::string &fname, mpt_model &model, size_t n_ctx_override)
 {
     printf("%s: loading model from '%s' - please wait ...\n", __func__, fname.c_str());
 
@@ -55,7 +55,12 @@ bool mpt_model_load(const std::string &fname, mpt_model &model)
         mptf.read_raw(&hparams.ftype, sizeof(hparams.ftype));
 
         printf("%s: n_vocab        = %d\n", __func__, hparams.n_vocab);
-        printf("%s: n_ctx          = %d\n", __func__, hparams.n_ctx);
+        if (n_ctx_override != 0) {
+            hparams.n_ctx = n_ctx_override;
+            printf("%s: n_ctx (forced) = %d\n", __func__, hparams.n_ctx);
+        } else {
+            printf("%s: n_ctx          = %d\n", __func__, hparams.n_ctx);
+        }
         printf("%s: n_embd         = %d\n", __func__, hparams.n_embd);
         printf("%s: n_head         = %d\n", __func__, hparams.n_head);
         printf("%s: n_layer        = %d\n", __func__, hparams.n_layer);

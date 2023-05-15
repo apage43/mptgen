@@ -51,7 +51,7 @@ struct mpt_model {
     std::map<std::string, struct ggml_tensor *> tensors;
 };
 
-bool mpt_model_load(const std::string & fname, mpt_model & model);
+bool mpt_model_load(const std::string & fname, mpt_model & model, size_t n_ctx_override = 0);
 bool mpt_eval(
         const mpt_model & model,
         const int n_threads,
