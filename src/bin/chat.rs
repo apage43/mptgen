@@ -28,6 +28,8 @@ struct Opt {
     mirostat: bool,
     #[structopt(short, long, possible_values = &ChatMode::variants(), case_insensitive = true)]
     chat_format: Option<ChatMode>, // TODO mirostat options
+    #[structopt(long)]
+    threads: Option<u32>,
 }
 
 use sampling::Sampler;
@@ -63,6 +65,9 @@ fn main() -> Result<()> {
     let mut loadopts = minmpt::MinMPTOptions::default();
     if let Some(n_ctx) = opt.n_ctx {
         loadopts = loadopts.override_n_ctx(n_ctx);
+    }
+    if let Some(nth) = opt.threads {
+        loadopts = loadopts.n_threads(nth)
     }
     let mut mptmodel = minmpt::MinMPT::load_model(&modelpathstr, Some(loadopts))?;
     let mut logits = Vec::new();

@@ -30,6 +30,8 @@ struct Opt {
         help = "amount of tokens to generate at once"
     )]
     n_gen: usize,
+    #[structopt(long)]
+    threads: Option<u32>,
 }
 
 fn main() -> Result<()> {
@@ -50,6 +52,9 @@ fn main() -> Result<()> {
     let mut loadopts = minmpt::MinMPTOptions::default();
     if let Some(n_ctx) = opt.n_ctx {
         loadopts = loadopts.override_n_ctx(n_ctx);
+    }
+    if let Some(nth) = opt.threads {
+        loadopts = loadopts.n_threads(nth)
     }
     let mut mptmodel = minmpt::MinMPT::load_model(&modelpathstr, Some(loadopts))?;
     let mut rng = rand::thread_rng();
