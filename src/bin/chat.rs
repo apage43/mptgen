@@ -89,6 +89,11 @@ fn main() -> Result<()> {
     while let Ok(line) =
         rl.readline(format!("{}/{}> ", mptmodel.n_past(), mptmodel.n_ctx()).as_str())
     {
+        if line == "/reset" {
+            println!("Reset conversation context.");
+            transcript.clear();
+            mptmodel.reset_ctx();
+        }
         if line == "/dump" {
             for (turn, input) in &transcript {
                 if *input {
