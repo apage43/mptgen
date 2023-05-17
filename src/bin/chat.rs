@@ -85,9 +85,25 @@ fn main() -> Result<()> {
     };
 
     let mut first_turn = true;
+    let mut transcript: Vec<(Vec<u32>, bool)> = vec![];
     while let Ok(line) =
         rl.readline(format!("{}/{}> ", mptmodel.n_past(), mptmodel.n_ctx()).as_str())
     {
+        if line == "/dump" {
+            for (turn, input) in &transcript {
+                if *input {
+                    print!("Input ");
+                } else {
+                    print!("Output ");
+                }
+                println!("tokens: {:?}", turn);
+                println!(
+                    "Decoded:\n{}",
+                    tokenizer.decode(turn.clone(), false).unwrap()
+                );
+            }
+            continue;
+        }
         let wrapped = {
             let mut s = String::new();
             if first_turn {
@@ -110,12 +126,13 @@ fn main() -> Result<()> {
         let encoding = tokenizer
             .encode(wrapped, true)
             .map_err(|_e| eyre!("Error tokenizing input"))?;
+        transcript.push((encoding.get_ids().to_vec(), true));
         mptmodel.eval(encoding.get_ids(), &mut logits)?;
         let mut resp_toks = Vec::new();
         let mut lastlen = 0;
         loop {
-            //let tokid = sampling::greedy(logits.as_slice()) as u32;
             let tokid = sampler.sample(logits.as_slice(), &mut rng) as u32;
+            resp_toks.push(tokid);
             if tokid == 0 {
                 mptmodel.rewind(1); // don't keep endoftext in the context
                 break;
@@ -123,7 +140,6 @@ fn main() -> Result<()> {
             if Some(tokid) == chat_stop {
                 break;
             }
-            resp_toks.push(tokid);
             let mut respinprogress = tokenizer.decode(resp_toks.clone(), false).unwrap();
             while respinprogress.ends_with('\u{FFFD}') {
                 respinprogress.pop();
@@ -134,6 +150,7 @@ fn main() -> Result<()> {
             std::io::stdout().flush()?;
             mptmodel.eval(&resp_toks[resp_toks.len() - 1..], &mut logits)?;
         }
+        transcript.push((resp_toks, false));
         println!();
     }
     Ok(())
