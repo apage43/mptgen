@@ -98,6 +98,7 @@ fn main() -> Result<()> {
             println!("Reset conversation context.");
             transcript.clear();
             mptmodel.reset_ctx();
+            continue;
         }
         if line == "/dump" {
             for (turn, input) in &transcript {
