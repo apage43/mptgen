@@ -20,6 +20,7 @@ size_t minmpt_n_past(minmpt_handle handle);
 void minmpt_rewind(minmpt_handle handle, size_t n);
 size_t minmpt_n_ctx(minmpt_handle handle);
 void minmpt_reset_ctx(minmpt_handle handle);
+void minmpt_set_n_threads(minmpt_handle handle, unsigned int n_threads);
 minmpt_error minmpt_eval_logits(minmpt_handle handle,
     const uint32_t *tokens, size_t n_tokens, float* logits);
 void minmpt_free(minmpt_handle handle);

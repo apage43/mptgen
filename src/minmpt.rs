@@ -33,12 +33,19 @@ impl MinMPTError {
 #[derive(Default, Debug)]
 pub struct MinMPTOptions {
     n_ctx_override: Option<usize>,
+    n_threads: Option<u32>,
 }
 
 impl MinMPTOptions {
     pub fn override_n_ctx(self, n_ctx: usize) -> Self {
         Self {
             n_ctx_override: Some(n_ctx),
+            ..self
+        }
+    }
+    pub fn n_threads(self, n_threads: u32) -> Self {
+        Self {
+            n_threads: Some(n_threads),
             ..self
         }
     }
@@ -66,12 +73,17 @@ impl MinMPT {
             )
         };
         if err == binding::MINMPT_OK as i32 {
+            if let Some(nth) = load_options.n_threads {
+                me.set_n_threads(nth);
+            }
             Ok(me)
         } else {
             Err(MinMPTError::from_code(err))
         }
     }
-
+    pub fn set_n_threads(&self, n_threads: u32) {
+        unsafe { binding::minmpt_set_n_threads(self.handle, n_threads) }
+    }
     pub fn n_vocab(&self) -> usize {
         unsafe { binding::minmpt_n_vocab(self.handle) }
     }

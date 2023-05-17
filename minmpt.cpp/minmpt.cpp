@@ -74,6 +74,11 @@ void minmpt_reset_ctx(minmpt_handle handle)
     modelp->n_past = 0;
 }
 
+void minmpt_set_n_threads(minmpt_handle handle, unsigned int n_threads) {
+    auto modelp = from_handle(handle);
+    modelp->n_threads = n_threads > 0 ? n_threads : 4;
+}
+
 minmpt_error minmpt_eval_logits(minmpt_handle handle,
                                 const uint32_t *tokens,
                                 size_t n_tokens,
@@ -88,7 +93,7 @@ minmpt_error minmpt_eval_logits(minmpt_handle handle,
         std::vector<float> dummy_logits;
         mpt_eval_cpp(modelp->model, 8, 0, {1, 2, 3, 4}, dummy_logits, modelp->mem_per_token);
     }
-    if (!mpt_eval(modelp->model, 8, modelp->n_past, tokens, n_tokens, logits, modelp->mem_per_token))
+    if (!mpt_eval(modelp->model, modelp->n_threads, modelp->n_past, tokens, n_tokens, logits, modelp->mem_per_token))
     {
         printf("Failed to predict\n");
         return MINMPT_FAILURE;
