@@ -91,7 +91,7 @@ minmpt_error minmpt_eval_logits(minmpt_handle handle,
     if (modelp->mem_per_token == 0)
     {
         std::vector<float> dummy_logits;
-        mpt_eval_cpp(modelp->model, 8, 0, {1, 2, 3, 4}, dummy_logits, modelp->mem_per_token);
+        mpt_eval_cpp(modelp->model, modelp->n_threads, 0, {1, 2, 3, 4}, dummy_logits, modelp->mem_per_token);
     }
     if (!mpt_eval(modelp->model, modelp->n_threads, modelp->n_past, tokens, n_tokens, logits, modelp->mem_per_token))
     {
