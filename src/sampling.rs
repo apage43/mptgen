@@ -99,6 +99,16 @@ impl Mirostat {
             m: 100,
         }
     }
+    pub fn lr(self, lr: f32) -> Self {
+        Self { lr, ..self }
+    }
+    pub fn target_surprise(self, target_surprise: f32) -> Self {
+        Self {
+            target_surprise,
+            max_surprise: target_surprise * 2.0,
+            ..self
+        }
+    }
 }
 
 impl Default for Mirostat {
@@ -115,7 +125,7 @@ impl<R: Rng> Sampler<R> for Mirostat {
         let eps = surp - 1.;
         let k =
             ((eps * (2.0_f32.powf(self.max_surprise))) / (1. - n_cand.powf(-eps))).powf(1.0 / surp);
-        let k = k.round() as usize + 1;
+        let k = (k.round() + 1.) as usize;
         cands.shrink_to(k);
         let mut p_logits: Vec<f32> = cands.iter().map(|c| c.logit).collect();
         let probs = {

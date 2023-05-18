@@ -21,8 +21,11 @@ struct Opt {
     #[structopt(long, short = "c")]
     n_ctx: Option<usize>,
     #[structopt(long)]
-    // TODO mirostat options
     mirostat: bool,
+    #[structopt(long, default_value = "1.0")]
+    mirostat_lr: f32,
+    #[structopt(long, default_value = "6.28")]
+    mirostat_tau: f32,
     #[structopt(
         long,
         short,
@@ -59,7 +62,11 @@ fn main() -> Result<()> {
     let mut mptmodel = minmpt::MinMPT::load_model(&modelpathstr, Some(loadopts))?;
     let mut rng = rand::thread_rng();
     let mut sampler: Box<dyn Sampler<ThreadRng>> = if opt.mirostat {
-        Box::new(sampling::Mirostat::new())
+        Box::new(
+            sampling::Mirostat::new()
+                .lr(opt.mirostat_lr)
+                .target_surprise(opt.mirostat_tau),
+        )
     } else {
         Box::new(sampling::BasicSampler {
             temperature: opt.temperature,
