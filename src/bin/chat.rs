@@ -99,7 +99,7 @@ fn main() -> Result<()> {
 
     let mut first_turn = true;
     let mut transcript: Vec<(Vec<u32>, bool)> = vec![];
-    while let Ok(line) =
+    while let Ok(mut line) =
         rl.readline(format!("{}/{}> ", mptmodel.n_past(), mptmodel.n_ctx()).as_str())
     {
         if line == "/reset" {
@@ -123,6 +123,13 @@ fn main() -> Result<()> {
             }
             continue;
         }
+        let sudo_cmd = "/sudo ";
+        let sudo = if line.starts_with(sudo_cmd) {
+            line = line.split_off(sudo_cmd.len());
+            true
+        } else {
+            false
+        };
         let wrapped = {
             let mut s = String::new();
             if first_turn {
@@ -139,6 +146,9 @@ fn main() -> Result<()> {
                 ChatMode::Instruct => {
                     write!(&mut s, "### Instruction:\n{line}\n### Response:\n")?;
                 }
+            }
+            if sudo {
+                write!(&mut s, "Sure, I can help you with that. ")?;
             }
             s
         };
