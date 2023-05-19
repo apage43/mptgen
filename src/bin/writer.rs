@@ -5,6 +5,8 @@ use mptgen::sampling;
 use mptgen::sampling::Sampler;
 use rand::rngs::ThreadRng;
 use std::io::Read;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::{io::Write as IoWrite, path::PathBuf};
 use structopt::StructOpt;
 use tokenizers::tokenizer::Tokenizer;
@@ -16,6 +18,8 @@ struct Opt {
     story: PathBuf,
     #[structopt(short, long, parse(from_os_str))]
     model: Option<PathBuf>,
+    #[structopt(short="b", long, default_value="32")]
+    input_batch_size: usize,
     #[structopt(short, long = "temp")]
     temperature: Option<f32>,
     #[structopt(long, short = "c")]
@@ -95,13 +99,21 @@ fn main() -> Result<()> {
     let mut storytokens = read_story()?;
     let mut stop = storytokens.len() + opt.n_gen;
     let mut resplen = 0;
+    let stop_signal = Arc::new(AtomicBool::new(false));
+    let r = stop_signal.clone();
+    ctrlc::set_handler(move || {
+        r.store(true, Ordering::SeqCst);
+    })?;
     loop {
         let n_past = mptmodel.n_past();
         //eprintln!("n_past={}, storytokens.len={}", n_past, storytokens.len());
+        stop_signal.store(false, Ordering::SeqCst);
         let mut resp_toks = vec![];
         if n_past < stop {
             let mut logits = Vec::new();
-            mptmodel.eval(&storytokens[n_past..], &mut logits)?;
+            for chunk in storytokens[n_past..].chunks(opt.input_batch_size) {
+                mptmodel.eval(chunk, &mut logits)?;
+            }
             let mut lastlen = 0;
             loop {
                 //let tokid = sampling::greedy(logits.as_slice()) as u32;
@@ -111,6 +123,10 @@ fn main() -> Result<()> {
                     break;
                 }
                 resp_toks.push(tokid);
+                if stop_signal.load(Ordering::SeqCst) {
+                    eprintln!("(interrupted)");
+                    break;
+                }
                 let mut respinprogress = tokenizer.decode(resp_toks.clone(), false).unwrap();
                 while respinprogress.ends_with('\u{FFFD}') {
                     respinprogress.pop();
@@ -131,7 +147,7 @@ fn main() -> Result<()> {
         //eprintln!("n_past={}, storytokens.len={}, resplen={}", mptmodel.n_past(), storytokens.len(), resplen);
         let inp = rl
             .readline(&format!(
-                "[M]ore/(w)rite/(r)eread/re(j)ect/(q)uit ({}/{})> ",
+                "[M]ore/(w)rite/(r)eread/re(j)ect/(d)ump/(q)uit ({}/{})> ",
                 storytokens.len(),
                 mptmodel.n_ctx()
             ))?
@@ -150,11 +166,27 @@ fn main() -> Result<()> {
                     .write_all(storytext.as_bytes())?;
                 eprintln!("Saved to {storyfile:?}");
             }
+            "d" => {
+                eprintln!("Story tokens: {storytokens:?}");
+                eprintln!("Story tokens e2e decode:");
+                let storytext = tokenizer
+                    .decode(storytokens.clone(), true)
+                    .map_err(|e| eyre!("story detokenize {e:?}"))?;
+                println!("{storytext}");
+            }
             "r" => {
-                // TODO: could find the longest common prefix here to avoid
-                // reprocessing the whole file
-                storytokens = read_story()?;
-                mptmodel.reset_ctx();
+                let readtokens = read_story()?;
+                let common_pfx_len = readtokens.iter().zip(storytokens.iter()).take_while(|(rt, st)| {
+                    rt == st
+                }).count();
+                // if there was a common prefix, we still need to back up one
+                // extra token in order to recompute the token that follows it
+                // since we don't cache the actual final logits
+                let common_pfx_len = common_pfx_len.saturating_sub(1);
+                storytokens = readtokens;
+                let rwlen = mptmodel.n_past() - common_pfx_len;
+                eprintln!("Rewinding by {rwlen}");
+                mptmodel.rewind(rwlen);
             }
             "j" => {
                 storytokens.resize(storytokens.len() - resplen, 0);

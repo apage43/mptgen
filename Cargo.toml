@@ -8,6 +8,7 @@ license = "MIT"
 
 [dependencies]
 color-eyre = "0.6.2"
+ctrlc = "3.2.5"
 rand = "0.8.5"
 rustyline = "11.0.0"
 structopt = "0.3.26"
