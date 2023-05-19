@@ -6243,7 +6243,7 @@ struct ggml_tensor * ggml_clamp(
     // TODO: when implement backward, fix this:
     struct ggml_tensor * result = ggml_view_tensor(ctx, a);
 
-    struct ggml_tensor * b = ggml_new_tensor_1d(ctx, GGML_TYPE_I32, 2);
+    struct ggml_tensor * b = ggml_new_tensor_1d(ctx, GGML_TYPE_I32, 3);
     ((float *) b->data)[0] = min;
     ((float *) b->data)[1] = max;
     
