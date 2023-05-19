@@ -102,6 +102,9 @@ impl MinMPT {
         }
     }
     pub fn eval(&mut self, ids: &[u32], logits_out: &mut Vec<f32>) -> Result<(), MinMPTError> {
+        if ids.is_empty() {
+            return Err(MinMPTError::InvalidInput)
+        }
         logits_out.resize(self.n_vocab(), 0.0);
         let err = unsafe {
             binding::minmpt_eval_logits(
