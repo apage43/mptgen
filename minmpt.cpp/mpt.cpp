@@ -351,7 +351,7 @@ bool mpt_eval(
                                model.layers[il].attn_Wqkv_w,
                                cur);
 
-            if (model.hparams.clip_qkv != 0.0f) {
+            if (model.hparams.clip_qkv > 0.0f) {
                 cur = ggml_clamp(ctx0, cur, -model.hparams.clip_qkv, model.hparams.clip_qkv);
             }
             struct ggml_tensor *Qcur = ggml_cont(ctx0, ggml_view_2d(ctx0, cur, n_embd, N, cur->nb[1], 0 * ggml_element_size(cur) * n_embd));
@@ -360,12 +360,12 @@ bool mpt_eval(
 
             // TODO: qk_ln? (seems to be False in MPT-7B configs)
             {
-                Vcur = ggml_transpose(ctx0, Vcur);
-
-                struct ggml_tensor *k = ggml_view_1d(ctx0, model.memory_k, N * n_embd, (ggml_element_size(model.memory_k) * n_embd) * (il * n_ctx + n_past));
-                struct ggml_tensor *v = ggml_view_2d(ctx0, model.memory_v, N, n_embd,
-                                                     (n_ctx)*ggml_element_size(model.memory_v),
-                                                     (il * n_ctx) * ggml_element_size(model.memory_v) * n_embd + n_past * ggml_element_size(model.memory_v));
+                struct ggml_tensor * k =
+                    ggml_view_1d(ctx0, model.memory_k, N * n_embd,
+                                 (ggml_element_size(model.memory_k) * n_embd) * (il * n_ctx + n_past));
+                struct ggml_tensor * v =
+                    ggml_view_1d(ctx0, model.memory_v, N * n_embd,
+                                 (ggml_element_size(model.memory_v) * n_embd) * (il * n_ctx + n_past));
 
                 ggml_build_forward_expand(&gf, ggml_cpy(ctx0, Kcur, k));
                 ggml_build_forward_expand(&gf, ggml_cpy(ctx0, Vcur, v));
@@ -403,15 +403,18 @@ bool mpt_eval(
             struct ggml_tensor *KQ_soft_max = ggml_soft_max(ctx0, KQ_masked);
 
             // V_trans = Vmem.view(n_embd/n_head, n_head, n_past + N).permute(1, 2, 0, 3).contiguous()
-            struct ggml_tensor *V =
-                ggml_view_3d(ctx0, model.memory_v,
-                             n_past + N, n_embd / n_head, n_head,
-                             n_ctx * ggml_element_size(model.memory_v),
-                             n_ctx * ggml_element_size(model.memory_v) * n_embd / n_head,
-                             il * n_ctx * ggml_element_size(model.memory_v) * n_embd);
+            struct ggml_tensor *V_trans = ggml_cpy(
+                ctx0,
+                ggml_permute(ctx0,
+                             ggml_reshape_3d(ctx0,
+                                             ggml_view_1d(ctx0, model.memory_v, (n_past + N) * n_embd,
+                                                          il * n_ctx * ggml_element_size(model.memory_v) * n_embd),
+                                             n_embd / n_head, n_head, n_past + N),
+                             1, 2, 0, 3),
+                ggml_new_tensor_3d(ctx0, model.memory_v->type, n_past + N, n_embd / n_head, n_head));
 
             // KQV = transpose(V) * KQ_soft_max
-            struct ggml_tensor *KQV = ggml_mul_mat(ctx0, V, KQ_soft_max);
+            struct ggml_tensor *KQV = ggml_mul_mat(ctx0, V_trans, KQ_soft_max);
 
             // KQV_merged = KQV.permute(0, 2, 1, 3)
             struct ggml_tensor *KQV_merged = ggml_permute(ctx0, KQV, 0, 2, 1, 3);
