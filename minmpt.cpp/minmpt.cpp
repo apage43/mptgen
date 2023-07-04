@@ -18,6 +18,10 @@ static minmpt_session *from_handle(minmpt_handle h) {
   return reinterpret_cast<minmpt_session *>(h);
 }
 
+static const minmpt_session *from_handle_const(const minmpt_handle h) {
+  return reinterpret_cast<const minmpt_session *>(h);
+}
+
 minmpt_error minmpt_load(minmpt_handle *handle, const char *filename,
                          size_t fnlen, size_t n_ctx_override) {
   auto modelp = new minmpt_session;
@@ -35,8 +39,8 @@ minmpt_error minmpt_load(minmpt_handle *handle, const char *filename,
   return MINMPT_FAILURE;
 }
 
-void minmpt_fork(minmpt_handle *handle, minmpt_handle *child) {
-  auto modelp = from_handle(handle);
+void minmpt_fork(minmpt_handle handle, minmpt_handle *child) {
+  auto modelp = from_handle_const(handle);
   auto newp = new minmpt_session;
   newp->mem_per_token = modelp->mem_per_token;
   newp->model = modelp->model;

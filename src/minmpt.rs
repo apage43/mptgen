@@ -81,6 +81,17 @@ impl MinMPT {
             Err(MinMPTError::from_code(err))
         }
     }
+    /// Creates a second model instance with its own kvcache but sharing the original model's
+    /// weight data
+    pub fn fork(&self) -> MinMPT {
+        let mut child = MinMPT { handle: null_mut() };
+        let selfref: binding::minmpt_handle = self.handle;
+        let childref: *mut binding::minmpt_handle = &mut child.handle;
+        unsafe{
+            binding::minmpt_fork(selfref, childref);
+        }
+        child
+    }
     pub fn set_n_threads(&self, n_threads: u32) {
         unsafe { binding::minmpt_set_n_threads(self.handle, n_threads) }
     }
