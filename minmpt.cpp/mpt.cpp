@@ -85,7 +85,6 @@ bool mpt_model_load(const std::string &fname, mpt_model &model,
 
     const int n_embd = hparams.n_embd;
     const int n_layer = hparams.n_layer;
-    const int n_ctx = hparams.n_ctx;
     const int n_vocab = hparams.n_vocab;
     const int expand = hparams.expand;
 
@@ -105,11 +104,6 @@ bool mpt_model_load(const std::string &fname, mpt_model &model,
                            ggml_type_sizef(wtype)); // ffn_up_proj_w
     ctx_size += n_layer * (expand * n_embd * n_embd *
                            ggml_type_sizef(wtype)); // ffn_down_proj_w
-
-    ctx_size += (size_t)n_ctx * n_layer * n_embd *
-                ggml_type_size(GGML_TYPE_F16); // memory_k
-    ctx_size += (size_t)n_ctx * n_layer * n_embd *
-                ggml_type_size(GGML_TYPE_F16); // memory_v
 
     // TODO probably less now?
     ctx_size += (5 + 10 * n_layer) * 256; // object overhead
@@ -180,27 +174,6 @@ bool mpt_model_load(const std::string &fname, mpt_model &model,
       model.tensors["transformer.blocks." + std::to_string(i) +
                     ".ffn.down_proj.weight"] = layer.ffn_down_proj_w;
     }
-  }
-
-  // key + value memory
-  {
-    const auto &hparams = model.hparams;
-
-    const int n_embd = hparams.n_embd;
-    const int n_layer = hparams.n_layer;
-    const int n_ctx = hparams.n_ctx;
-
-    const int n_mem = n_layer * n_ctx;
-    const size_t n_elements = (size_t)n_embd * n_mem;
-
-    model.memory_k = ggml_new_tensor_1d(ctx, GGML_TYPE_F16, n_elements);
-    model.memory_v = ggml_new_tensor_1d(ctx, GGML_TYPE_F16, n_elements);
-
-    const size_t memory_size =
-        ggml_nbytes(model.memory_k) + ggml_nbytes(model.memory_v);
-
-    printf("%s: memory_size = %8.2f MB, n_mem = %d\n", __func__,
-           memory_size / 1024.0 / 1024.0, n_mem);
   }
 
   // load weights
@@ -302,9 +275,9 @@ bool mpt_model_load(const std::string &fname, mpt_model &model,
 // The GPT-J model requires about 16MB of memory per input token.
 //
 
-bool mpt_eval(const mpt_model &model, const int n_threads, const int n_past,
-              const uint32_t *embd_inp, const size_t n_embd_inp, float *embd_w,
-              size_t &mem_per_token) {
+bool mpt_eval(const mpt_model &model, mpt_kvcache &kvcache, const int n_threads,
+              const int n_past, const uint32_t *embd_inp,
+              const size_t n_embd_inp, float *embd_w, size_t &mem_per_token) {
   const int N = n_embd_inp;
 
   const auto &hparams = model.hparams;
@@ -376,12 +349,12 @@ bool mpt_eval(const mpt_model &model, const int n_threads, const int n_past,
       // TODO: qk_ln? (seems to be False in MPT-7B configs)
       {
         struct ggml_tensor *k =
-            ggml_view_1d(ctx0, model.memory_k, N * n_embd,
-                         (ggml_element_size(model.memory_k) * n_embd) *
+            ggml_view_1d(ctx0, kvcache.memory_k, N * n_embd,
+                         (ggml_element_size(kvcache.memory_k) * n_embd) *
                              (il * n_ctx + n_past));
         struct ggml_tensor *v =
-            ggml_view_1d(ctx0, model.memory_v, N * n_embd,
-                         (ggml_element_size(model.memory_v) * n_embd) *
+            ggml_view_1d(ctx0, kvcache.memory_v, N * n_embd,
+                         (ggml_element_size(kvcache.memory_v) * n_embd) *
                              (il * n_ctx + n_past));
 
         ggml_build_forward_expand(&gf, ggml_cpy(ctx0, Kcur, k));
@@ -397,8 +370,8 @@ bool mpt_eval(const mpt_model &model, const int n_threads, const int n_past,
           ctx0,
           ggml_reshape_3d(
               ctx0,
-              ggml_view_1d(ctx0, model.memory_k, (n_past + N) * n_embd,
-                           il * n_ctx * ggml_element_size(model.memory_k) *
+              ggml_view_1d(ctx0, kvcache.memory_k, (n_past + N) * n_embd,
+                           il * n_ctx * ggml_element_size(kvcache.memory_k) *
                                n_embd),
               n_embd / n_head, n_head, n_past + N),
           0, 2, 1, 3);
@@ -431,12 +404,13 @@ bool mpt_eval(const mpt_model &model, const int n_threads, const int n_past,
               ctx0,
               ggml_reshape_3d(
                   ctx0,
-                  ggml_view_1d(ctx0, model.memory_v, (n_past + N) * n_embd,
-                               il * n_ctx * ggml_element_size(model.memory_v) *
+                  ggml_view_1d(ctx0, kvcache.memory_v, (n_past + N) * n_embd,
+                               il * n_ctx *
+                                   ggml_element_size(kvcache.memory_v) *
                                    n_embd),
                   n_embd / n_head, n_head, n_past + N),
               1, 2, 0, 3),
-          ggml_new_tensor_3d(ctx0, model.memory_v->type, n_past + N,
+          ggml_new_tensor_3d(ctx0, kvcache.memory_v->type, n_past + N,
                              n_embd / n_head, n_head));
 
       // KQV = transpose(V) * KQ_soft_max
@@ -498,10 +472,11 @@ bool mpt_eval(const mpt_model &model, const int n_threads, const int n_past,
   return true;
 }
 
-bool mpt_eval_cpp(const mpt_model &model, const int n_threads, const int n_past,
+bool mpt_eval_cpp(const mpt_model &model, mpt_kvcache &kvcache,
+                  const int n_threads, const int n_past,
                   const std::vector<uint32_t> &embd_inp,
                   std::vector<float> &embd_w, size_t &mem_per_token) {
   embd_w.resize(model.hparams.n_vocab);
-  return mpt_eval(model, n_threads, n_past, embd_inp.data(), embd_inp.size(),
-                  embd_w.data(), mem_per_token);
+  return mpt_eval(model, kvcache, n_threads, n_past, embd_inp.data(),
+                  embd_inp.size(), embd_w.data(), mem_per_token);
 }

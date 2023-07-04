@@ -16,6 +16,9 @@ typedef void *minmpt_handle;
 typedef int minmpt_error;
 minmpt_error minmpt_load(minmpt_handle *handle, const char *filename,
                          size_t fnlen, size_t n_ctx_override);
+
+void minmpt_fork(minmpt_handle *handle, minmpt_handle *child);
+
 size_t minmpt_n_vocab(minmpt_handle handle);
 size_t minmpt_n_past(minmpt_handle handle);
 void minmpt_rewind(minmpt_handle handle, size_t n);
