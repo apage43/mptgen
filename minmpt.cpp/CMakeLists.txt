@@ -87,9 +87,9 @@ endif()
 # Compile flags
 #
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED true)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -350,6 +350,8 @@ endif()
 add_library(ggml OBJECT
             ggml.c
             ggml.h
+            k_quants.h
+            k_quants.c
             ${GGML_CUDA_SOURCES}
             ${GGML_OPENCL_SOURCES})
 
@@ -360,6 +362,8 @@ target_link_libraries(ggml PUBLIC Threads::Threads ${MINMPT_EXTRA_LIBS})
 if (BUILD_SHARED_LIBS)
     set_target_properties(ggml PROPERTIES POSITION_INDEPENDENT_CODE ON)
 endif()
+
+add_compile_definitions(GGML_USE_K_QUANTS)
 
 add_library(minmpt
             mpt.cpp
