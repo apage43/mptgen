@@ -136,6 +136,10 @@ fn main() -> Result<()> {
             println!("Reset conversation context.");
             transcript.clear();
             mptmodel.reset_ctx();
+            if let Some(ref mut model_neg) = model_neg {
+                model_neg.reset_ctx();
+            }
+            first_turn = false;
             continue;
         }
         if line == "/dump" {
