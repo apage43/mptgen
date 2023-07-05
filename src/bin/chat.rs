@@ -34,6 +34,12 @@ struct Opt {
     chat_format: Option<ChatMode>,
     #[structopt(long)]
     threads: Option<u32>,
+    #[structopt(long, default_value = "1.0")]
+    cfg_scale: f32,
+    #[structopt(long)]
+    negative_system_prompt: Option<String>,
+    #[structopt(long)]
+    system_prompt: Option<String>,
 }
 
 use sampling::Sampler;
@@ -75,9 +81,27 @@ fn main() -> Result<()> {
     }
     let mut mptmodel = minmpt::MinMPT::load_model(&modelpathstr, Some(loadopts))?;
     let mut logits = Vec::new();
-    let sysprompt = match mode {
-        ChatMode::ChatML => "<|im_start|>system\nyou are a helpful assistant<|im_end|>", 
+    let mut logits_cfg_neg = Vec::new();
+    let sysprompt_default = match mode {
+        ChatMode::ChatML => "you are a helpful assistant", 
         ChatMode::Instruct => "Below is an instruction that describes a task. Write a response that appropriately completes the request."
+    };
+    let wrap_sysprompt = |sysprompt: String| match mode {
+        ChatMode::ChatML => format!("<|im_start|>system\n{sysprompt}<|im_end|>"),
+        ChatMode::Instruct => sysprompt,
+    };
+    let sysprompt = wrap_sysprompt(
+        opt.system_prompt
+            .clone()
+            .unwrap_or(sysprompt_default.to_string()),
+    );
+    let sysprompt_neg = if opt.cfg_scale != 1.0 && opt.system_prompt.is_some() {
+        Some(wrap_sysprompt(
+            opt.negative_system_prompt
+                .unwrap_or(sysprompt_default.to_string()),
+        ))
+    } else {
+        None
     };
     let chat_stop = (mode == ChatMode::ChatML).then(|| {
         tokenizer
@@ -99,6 +123,12 @@ fn main() -> Result<()> {
 
     let mut first_turn = true;
     let mut transcript: Vec<(Vec<u32>, bool)> = vec![];
+    let mut model_neg = if opt.cfg_scale != 1.0 {
+        eprintln!("CFG Mode on!");
+        Some(mptmodel.fork())
+    } else {
+        None
+    };
     while let Ok(mut line) =
         rl.readline(format!("{}/{}> ", mptmodel.n_past(), mptmodel.n_ctx()).as_str())
     {
@@ -130,33 +160,56 @@ fn main() -> Result<()> {
         } else {
             false
         };
-        let wrapped = {
-            let mut s = String::new();
-            if first_turn {
-                write!(&mut s, "{sysprompt}")?;
-                first_turn = false;
-            }
-            match mode {
-                ChatMode::ChatML => {
-                    write!(
-                        &mut s,
-                        "<|im_start|>user\n{line}<|im_end|><|im_start|>assistant\n"
-                    )?;
+        let mut do_input_eval = |model: &mut minmpt::MinMPT, neg: bool| -> Result<()> {
+            let wrapped = {
+                let mut s = String::new();
+                if first_turn {
+                    if neg {
+                        let sn = sysprompt_neg.as_ref().unwrap();
+                        eprintln!("Negative system prompt: {sn:?}\n");
+                        write!(&mut s, "{sn}")?;
+                    } else {
+                        eprintln!("System prompt: {sysprompt:?}");
+                        write!(&mut s, "{sysprompt}")?;
+                    }
                 }
-                ChatMode::Instruct => {
-                    write!(&mut s, "### Instruction:\n{line}\n### Response:\n")?;
+                match mode {
+                    ChatMode::ChatML => {
+                        write!(
+                            &mut s,
+                            "<|im_start|>user\n{line}<|im_end|><|im_start|>assistant\n"
+                        )?;
+                    }
+                    ChatMode::Instruct => {
+                        write!(&mut s, "### Instruction:\n{line}\n### Response:\n")?;
+                    }
                 }
+                if sudo {
+                    write!(&mut s, "Sure, I can help you with that. ")?;
+                }
+                s
+            };
+            let encoding = tokenizer
+                .encode(wrapped, true)
+                .map_err(|_e| eyre!("Error tokenizing input"))?;
+            if !neg {
+                transcript.push((encoding.get_ids().to_vec(), true));
             }
-            if sudo {
-                write!(&mut s, "Sure, I can help you with that. ")?;
+            if neg {
+                model.eval(encoding.get_ids(), &mut logits_cfg_neg)?;
+            } else {
+                model.eval(encoding.get_ids(), &mut logits)?;
             }
-            s
+            Ok(())
         };
-        let encoding = tokenizer
-            .encode(wrapped, true)
-            .map_err(|_e| eyre!("Error tokenizing input"))?;
-        transcript.push((encoding.get_ids().to_vec(), true));
-        mptmodel.eval(encoding.get_ids(), &mut logits)?;
+        do_input_eval(&mut mptmodel, false)?;
+        if let Some(ref mut mptmodel_n) = model_neg {
+            do_input_eval(mptmodel_n, true)?;
+            let cfg_logits =
+                sampling::apply_cfg(opt.cfg_scale, logits.as_slice(), logits_cfg_neg.as_slice());
+            logits = cfg_logits;
+        }
+        first_turn = false;
         let mut resp_toks = Vec::new();
         let mut lastlen = 0;
         loop {
@@ -178,6 +231,15 @@ fn main() -> Result<()> {
             lastlen = respinprogress.as_bytes().len();
             std::io::stdout().flush()?;
             mptmodel.eval(&resp_toks[resp_toks.len() - 1..], &mut logits)?;
+            if let Some(ref mut mptmodel_n) = model_neg {
+                mptmodel_n.eval(&resp_toks[resp_toks.len() - 1..], &mut logits_cfg_neg)?;
+                let cfg_logits = sampling::apply_cfg(
+                    opt.cfg_scale,
+                    logits.as_slice(),
+                    logits_cfg_neg.as_slice(),
+                );
+                logits = cfg_logits;
+            }
         }
         transcript.push((resp_toks, false));
         println!();

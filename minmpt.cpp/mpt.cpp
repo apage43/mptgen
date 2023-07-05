@@ -52,19 +52,19 @@ bool mpt_model_load(const std::string &fname, mpt_model &model,
     mptf.read_raw(&hparams.clip_qkv, sizeof(hparams.clip_qkv));
     mptf.read_raw(&hparams.ftype, sizeof(hparams.ftype));
 
-    printf("%s: n_vocab        = %d\n", __func__, hparams.n_vocab);
-    if (n_ctx_override != 0) {
-      hparams.n_ctx = n_ctx_override;
-      printf("%s: n_ctx (forced) = %d\n", __func__, hparams.n_ctx);
-    } else {
-      printf("%s: n_ctx          = %d\n", __func__, hparams.n_ctx);
-    }
-    printf("%s: n_embd         = %d\n", __func__, hparams.n_embd);
-    printf("%s: n_head         = %d\n", __func__, hparams.n_head);
-    printf("%s: n_layer        = %d\n", __func__, hparams.n_layer);
-    printf("%s: alibi_bias_max = %f\n", __func__, hparams.alibi_bias_max);
-    printf("%s: clip_qkv       = %f\n", __func__, hparams.clip_qkv);
-    printf("%s: ftype          = %d\n", __func__, hparams.ftype);
+    // printf("%s: n_vocab        = %d\n", __func__, hparams.n_vocab);
+    // if (n_ctx_override != 0) {
+    //   hparams.n_ctx = n_ctx_override;
+    //   printf("%s: n_ctx (forced) = %d\n", __func__, hparams.n_ctx);
+    // } else {
+    //   printf("%s: n_ctx          = %d\n", __func__, hparams.n_ctx);
+    // }
+    // printf("%s: n_embd         = %d\n", __func__, hparams.n_embd);
+    // printf("%s: n_head         = %d\n", __func__, hparams.n_head);
+    // printf("%s: n_layer        = %d\n", __func__, hparams.n_layer);
+    // printf("%s: alibi_bias_max = %f\n", __func__, hparams.alibi_bias_max);
+    // printf("%s: clip_qkv       = %f\n", __func__, hparams.clip_qkv);
+    // printf("%s: ftype          = %d\n", __func__, hparams.ftype);
   }
 
   // for the big tensors, we have the option to store the data in 16-bit floats

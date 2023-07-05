@@ -5,8 +5,8 @@ use mptgen::sampling;
 use mptgen::sampling::Sampler;
 use rand::rngs::ThreadRng;
 use std::io::Read;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::{io::Write as IoWrite, path::PathBuf};
 use structopt::StructOpt;
 use tokenizers::tokenizer::Tokenizer;
@@ -18,7 +18,7 @@ struct Opt {
     story: PathBuf,
     #[structopt(short, long, parse(from_os_str))]
     model: Option<PathBuf>,
-    #[structopt(short="b", long, default_value="32")]
+    #[structopt(short = "b", long, default_value = "32")]
     input_batch_size: usize,
     #[structopt(short, long = "temp")]
     temperature: Option<f32>,
@@ -176,9 +176,11 @@ fn main() -> Result<()> {
             }
             "r" => {
                 let readtokens = read_story()?;
-                let common_pfx_len = readtokens.iter().zip(storytokens.iter()).take_while(|(rt, st)| {
-                    rt == st
-                }).count();
+                let common_pfx_len = readtokens
+                    .iter()
+                    .zip(storytokens.iter())
+                    .take_while(|(rt, st)| rt == st)
+                    .count();
                 // if there was a common prefix, we still need to back up one
                 // extra token in order to recompute the token that follows it
                 // since we don't cache the actual final logits

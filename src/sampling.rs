@@ -1,6 +1,14 @@
 use rand::{prelude::Distribution, Rng};
 use std::f32::consts::TAU;
 
+pub fn apply_cfg(cfg_scale: f32, pos_logits: &[f32], neg_logits: &[f32]) -> Vec<f32> {
+    let mut out = vec![0.0; pos_logits.len()];
+    for (i, (p, n)) in pos_logits.iter().zip(neg_logits.iter()).enumerate() {
+        out[i] = cfg_scale * (p - n) + n;
+    }
+    out
+}
+
 pub trait Sampler<R: Rng> {
     fn sample(&mut self, raw_logits: &[f32], rng: &mut R) -> usize;
 }

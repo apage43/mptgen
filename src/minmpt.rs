@@ -53,6 +53,7 @@ impl MinMPTOptions {
 
 pub struct MinMPT {
     handle: binding::minmpt_handle,
+    chunksize: usize,
 }
 
 #[allow(dead_code)]
@@ -61,7 +62,10 @@ impl MinMPT {
         path: &str,
         load_options: Option<MinMPTOptions>,
     ) -> Result<MinMPT, MinMPTError> {
-        let mut me = MinMPT { handle: null_mut() };
+        let mut me = MinMPT {
+            handle: null_mut(),
+            chunksize: 10,
+        };
         let load_options = load_options.unwrap_or_default();
         let href: *mut binding::minmpt_handle = &mut me.handle;
         let err = unsafe {
@@ -84,10 +88,13 @@ impl MinMPT {
     /// Creates a second model instance with its own kvcache but sharing the original model's
     /// weight data
     pub fn fork(&self) -> MinMPT {
-        let mut child = MinMPT { handle: null_mut() };
+        let mut child = MinMPT {
+            handle: null_mut(),
+            chunksize: self.chunksize,
+        };
         let selfref: binding::minmpt_handle = self.handle;
         let childref: *mut binding::minmpt_handle = &mut child.handle;
-        unsafe{
+        unsafe {
             binding::minmpt_fork(selfref, childref);
         }
         child
@@ -113,8 +120,14 @@ impl MinMPT {
         }
     }
     pub fn eval(&mut self, ids: &[u32], logits_out: &mut Vec<f32>) -> Result<(), MinMPTError> {
+        for chunk in ids.chunks(self.chunksize) {
+            self.eval_inner(chunk, logits_out)?;
+        }
+        Ok(())
+    }
+    fn eval_inner(&mut self, ids: &[u32], logits_out: &mut Vec<f32>) -> Result<(), MinMPTError> {
         if ids.is_empty() {
-            return Err(MinMPTError::InvalidInput)
+            return Err(MinMPTError::InvalidInput);
         }
         logits_out.resize(self.n_vocab(), 0.0);
         let err = unsafe {
