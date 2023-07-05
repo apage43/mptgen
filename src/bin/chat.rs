@@ -139,7 +139,7 @@ fn main() -> Result<()> {
             if let Some(ref mut model_neg) = model_neg {
                 model_neg.reset_ctx();
             }
-            first_turn = false;
+            first_turn = true;
             continue;
         }
         if line == "/dump" {
