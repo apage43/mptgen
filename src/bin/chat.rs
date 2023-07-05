@@ -95,7 +95,8 @@ fn main() -> Result<()> {
             .clone()
             .unwrap_or(sysprompt_default.to_string()),
     );
-    let sysprompt_neg = if opt.cfg_scale != 1.0 && opt.system_prompt.is_some() {
+    let mut cfg_scale = opt.cfg_scale;
+    let sysprompt_neg = if cfg_scale != 1.0 && opt.system_prompt.is_some() {
         Some(wrap_sysprompt(
             opt.negative_system_prompt
                 .unwrap_or(sysprompt_default.to_string()),
@@ -123,7 +124,7 @@ fn main() -> Result<()> {
 
     let mut first_turn = true;
     let mut transcript: Vec<(Vec<u32>, bool)> = vec![];
-    let mut model_neg = if opt.cfg_scale != 1.0 {
+    let mut model_neg = if cfg_scale != 1.0 {
         eprintln!("CFG Mode on!");
         Some(mptmodel.fork())
     } else {
@@ -155,6 +156,16 @@ fn main() -> Result<()> {
                     tokenizer.decode(turn.clone(), false).unwrap()
                 );
             }
+            continue;
+        }
+        if line.starts_with("/cfg ") {
+            let param = line
+                .split_whitespace()
+                .skip(1)
+                .next()
+                .expect("expected cfg-scale");
+            cfg_scale = param.parse()?;
+            eprintln!("cfg_scale={cfg_scale}");
             continue;
         }
         let sudo_cmd = "/sudo ";
@@ -210,7 +221,7 @@ fn main() -> Result<()> {
         if let Some(ref mut mptmodel_n) = model_neg {
             do_input_eval(mptmodel_n, true)?;
             let cfg_logits =
-                sampling::apply_cfg(opt.cfg_scale, logits.as_slice(), logits_cfg_neg.as_slice());
+                sampling::apply_cfg(cfg_scale, logits.as_slice(), logits_cfg_neg.as_slice());
             logits = cfg_logits;
         }
         first_turn = false;
@@ -237,11 +248,8 @@ fn main() -> Result<()> {
             mptmodel.eval(&resp_toks[resp_toks.len() - 1..], &mut logits)?;
             if let Some(ref mut mptmodel_n) = model_neg {
                 mptmodel_n.eval(&resp_toks[resp_toks.len() - 1..], &mut logits_cfg_neg)?;
-                let cfg_logits = sampling::apply_cfg(
-                    opt.cfg_scale,
-                    logits.as_slice(),
-                    logits_cfg_neg.as_slice(),
-                );
+                let cfg_logits =
+                    sampling::apply_cfg(cfg_scale, logits.as_slice(), logits_cfg_neg.as_slice());
                 logits = cfg_logits;
             }
         }
