@@ -53,10 +53,10 @@ bool mpt_model_load(const std::string &fname, mpt_model &model,
     mptf.read_raw(&hparams.ftype, sizeof(hparams.ftype));
 
     // printf("%s: n_vocab        = %d\n", __func__, hparams.n_vocab);
-    // if (n_ctx_override != 0) {
-    //   hparams.n_ctx = n_ctx_override;
-    //   printf("%s: n_ctx (forced) = %d\n", __func__, hparams.n_ctx);
-    // } else {
+    if (n_ctx_override != 0) {
+      hparams.n_ctx = n_ctx_override;
+      //   printf("%s: n_ctx (forced) = %d\n", __func__, hparams.n_ctx);
+    } // else {
     //   printf("%s: n_ctx          = %d\n", __func__, hparams.n_ctx);
     // }
     // printf("%s: n_embd         = %d\n", __func__, hparams.n_embd);
