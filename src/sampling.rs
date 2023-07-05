@@ -2,11 +2,11 @@ use rand::{prelude::Distribution, Rng};
 use std::f32::consts::TAU;
 
 pub fn apply_cfg(cfg_scale: f32, pos_logits: &[f32], neg_logits: &[f32]) -> Vec<f32> {
-    let mut out = vec![0.0; pos_logits.len()];
-    for (i, (p, n)) in pos_logits.iter().zip(neg_logits.iter()).enumerate() {
-        out[i] = cfg_scale * (p - n) + n;
-    }
-    out
+    pos_logits
+        .iter()
+        .zip(neg_logits.iter())
+        .map(|(p, n)| cfg_scale * (p - n) + n)
+        .collect()
 }
 
 pub trait Sampler<R: Rng> {
