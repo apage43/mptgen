@@ -41,11 +41,8 @@ fn softmax_inplace(logits: &mut [f32]) {
         .unwrap();
     // shift max to 0 to avoid overflow
     logits.iter_mut().for_each(|l| *l = (*l - lmax).exp());
-    let pmax = *logits
-        .iter()
-        .max_by(|la, lb| la.partial_cmp(lb).unwrap())
-        .unwrap();
-    logits.iter_mut().for_each(|p| *p /= pmax);
+    let psum: f32 = logits.iter().sum();
+    logits.iter_mut().for_each(|p| *p /= psum);
 }
 
 fn softmax(logits: &[f32]) -> Vec<f32> {
