@@ -304,9 +304,9 @@ bool mpt_eval(const mpt_model &model, mpt_kvcache &kvcache, const int n_threads,
   }
 
   struct ggml_init_params params = {
-      .mem_size = buf_size,
-      .mem_buffer = nullptr,
-      .no_alloc = false,
+      /* .mem_size   = */ buf_size,
+      /* .mem_buffer = */ nullptr,
+      /* .no_alloc   = */ false,
   };
 
   struct ggml_context *ctx0 = ggml_init(params);

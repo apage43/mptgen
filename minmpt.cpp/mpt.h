@@ -44,7 +44,6 @@ struct mpt_model {
   std::vector<mpt_layer> layers;
 
   struct ggml_context *ctx;
-  // key + value memory
   std::map<std::string, struct ggml_tensor *> tensors;
 
   ~mpt_model() {
@@ -54,6 +53,7 @@ struct mpt_model {
   }
 };
 
+// key + value memory
 struct mpt_kvcache {
   mpt_kvcache(mpt_model &model) {
     const auto &hparams = model.hparams;
@@ -92,7 +92,6 @@ struct mpt_kvcache {
 
 bool mpt_model_load(const std::string &fname, mpt_model &model,
                     size_t n_ctx_override = 0);
-
 bool mpt_eval(const mpt_model &model, mpt_kvcache &kvcache, const int n_threads,
               const int n_past, const uint32_t *embd_inp,
               const size_t n_embd_inp, float *embd_w, size_t &mem_per_token);
