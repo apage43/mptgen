@@ -2,6 +2,9 @@ use color_eyre::{eyre::eyre, Result};
 use mptgen::minmpt;
 use mptgen::sampling;
 use rand::rngs::ThreadRng;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::{fmt::Write, io::Write as IoWrite, path::PathBuf};
 use structopt::clap::arg_enum;
 use structopt::StructOpt;
@@ -122,6 +125,12 @@ fn main() -> Result<()> {
         })
     };
 
+    let stop_signal = Arc::new(AtomicBool::new(false));
+    let r = stop_signal.clone();
+    ctrlc::set_handler(move || {
+        r.store(true, Ordering::SeqCst);
+    })?;
+
     let mut first_turn = true;
     let mut transcript: Vec<(Vec<u32>, bool)> = vec![];
     let mut model_neg = if cfg_scale != 1.0 {
@@ -133,6 +142,7 @@ fn main() -> Result<()> {
     while let Ok(mut line) =
         rl.readline(format!("{}/{}> ", mptmodel.n_past(), mptmodel.n_ctx()).as_str())
     {
+        stop_signal.store(false, Ordering::SeqCst);
         if line == "/reset" {
             println!("Reset conversation context.");
             transcript.clear();
@@ -232,6 +242,10 @@ fn main() -> Result<()> {
             resp_toks.push(tokid);
             if tokid == 0 {
                 mptmodel.rewind(1); // don't keep endoftext in the context
+                break;
+            }
+            if stop_signal.load(Ordering::SeqCst) {
+                eprintln!("(interrupted)");
                 break;
             }
             if Some(tokid) == chat_stop {
